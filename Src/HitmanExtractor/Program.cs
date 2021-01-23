@@ -82,7 +82,7 @@ namespace HitmanExtractor
                 }
                 else if (args[0] == "extract")
                 {
-                    ExtractFileEntryList(binaryReader, fileEntryList, args[2], args.Skip(3).ToList(), args[1]);
+                    ExtractFileEntryList(binaryReader, fileEntryList, args[2], args.Skip(3).ToList());
                 }
             }
             else
@@ -195,7 +195,7 @@ namespace HitmanExtractor
             return (int)(a / (b / 100M));
         }
 
-        private static void ExtractFileEntryList(BinaryReader binaryReader, List<FileEntry> fileEntryList, string outputDirectory, List<string> filters, string inputChunk)
+        private static void ExtractFileEntryList(BinaryReader binaryReader, List<FileEntry> fileEntryList, string outputDirectory, List<string> filters)
         {
             Directory.CreateDirectory(outputDirectory);
             int skipped = 0;
@@ -247,7 +247,7 @@ namespace HitmanExtractor
                 Console.WriteLine($"EXTRACTED: {fileEntry.FileType} => {fileEntry.Hash} @ {fileEntry.FileOffset} ({fileEntry.ActualFileSize} / {fileEntry.DecompressedFileSize})");
                 extracted++;
             }
-            File.WriteAllText($"{inputChunk}_log.txt", $@"Extraced {extracted} files ({GetPercent(fileEntryList.Count, extracted)}%), skipped is {skipped} ({GetPercent(fileEntryList.Count, skipped)}%). LZ4 decompress errors: {errors}");
+            File.WriteAllText($"{outputDirectory}_log.txt", $@"Extraced {extracted} files ({GetPercent(fileEntryList.Count, extracted)}%), skipped is {skipped} ({GetPercent(fileEntryList.Count, skipped)}%). LZ4 decompress errors: {errors}");
         }
     }
 }
