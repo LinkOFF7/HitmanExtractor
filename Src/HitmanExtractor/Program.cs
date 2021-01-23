@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -82,7 +82,7 @@ namespace HitmanExtractor
                 }
                 else if (args[0] == "extract")
                 {
-                    ExtractFileEntryList(binaryReader, fileEntryList, args[2], args.Skip(3).ToList());
+                    ExtractFileEntryList(binaryReader, fileEntryList, args[2], args.Skip(3).ToList(), args[1]);
                 }
             }
             else
@@ -188,10 +188,19 @@ namespace HitmanExtractor
             }
         }
 
-        private static void ExtractFileEntryList(BinaryReader binaryReader, List<FileEntry> fileEntryList, string outputDirectory, List<string> filters)
+        public static int GetPercent(Int32 b, Int32 a)
+        {
+            if (b == 0) return 0;
+
+            return (int)(a / (b / 100M));
+        }
+
+        private static void ExtractFileEntryList(BinaryReader binaryReader, List<FileEntry> fileEntryList, string outputDirectory, List<string> filters, string inputChunk)
         {
             Directory.CreateDirectory(outputDirectory);
-
+            int skipped = 0;
+            int extracted = 0;
+            int errors = 0;
             foreach (var fileEntry in fileEntryList)
             {
                 if (filters.Any() && !filters.Contains(fileEntry.FileType))
@@ -202,7 +211,7 @@ namespace HitmanExtractor
                 if (fileEntry.ActualFileSize == 0)
                 {
                     Console.WriteLine($"SKIPPED: {fileEntry.FileType} => {fileEntry.Hash} @ {fileEntry.FileOffset} ({fileEntry.ActualFileSize} / {fileEntry.DecompressedFileSize})");
-
+                    skipped++;
                     continue;
                 }
 
@@ -220,16 +229,25 @@ namespace HitmanExtractor
                     }
                 }
 
-                bytes = LZ4Codec.Decode(
-                    bytes, 0, bytes.Length, (int) fileEntry.DecompressedFileSize
-                );
+                try
+                {
+                    bytes = LZ4Codec.Decode(bytes, 0, bytes.Length, (int)fileEntry.DecompressedFileSize);
+                }
+                catch (ArgumentException)
+                {
+                    errors++;
+                }
 
                 var fileExtension = new string(fileEntry.FileType.ToCharArray().Reverse().ToArray());
 
-                File.WriteAllBytes(Path.Combine(outputDirectory, $"{fileEntry.Hash:X16}.{fileExtension.ToLower()}"), bytes);
+                var pathToExtract = $"{outputDirectory}/{fileExtension.ToUpper()}";
+                if (!Directory.Exists(pathToExtract)) Directory.CreateDirectory(pathToExtract);
+                File.WriteAllBytes(Path.Combine(pathToExtract, $"{fileEntry.Hash:X16}.{fileExtension.ToLower()}"), bytes);
 
                 Console.WriteLine($"EXTRACTED: {fileEntry.FileType} => {fileEntry.Hash} @ {fileEntry.FileOffset} ({fileEntry.ActualFileSize} / {fileEntry.DecompressedFileSize})");
+                extracted++;
             }
+            File.WriteAllText($"{inputChunk}_log.txt", $@"Extraced {extracted} files ({GetPercent(fileEntryList.Count, extracted)}%), skipped is {skipped} ({GetPercent(fileEntryList.Count, skipped)}%). LZ4 decompress errors: {errors}");
         }
     }
 }
